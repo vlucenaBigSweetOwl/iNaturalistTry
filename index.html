@@ -1,12 +1,38 @@
 
 <!DOCTYPE html>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+crossorigin=""/>
 
 <html>
 	<head>
+		<!-- Make sure you put this AFTER Leaflet's CSS -->
+		 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+		   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+		   crossorigin=""></script>
 		<script src="https://cdn.jsdelivr.net/npm/p5@1.4.1/lib/p5.js"></script>
 		<script type="text/javascript" src="iNatTry.js"></script>
+
+		<style>
+			#map {
+				height: 600px;
+			}
+			.grid-container {
+			    display: grid;
+			    grid-template-columns: 1fr 1fr;
+			    grid-gap: 20px;
+			}
+		</style>
 	</head>
 	<body style="background-color:black;">
-		<main></main>
+		<div class="grid-container">
+
+		    <main></main>
+
+		    <div id="map"></div>
+		  
+		</div>
+		
+
 	</body>
 </html>
