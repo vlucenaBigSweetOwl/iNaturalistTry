@@ -13,39 +13,43 @@ const MAIN = 2;
 let stage = LOADINGINAT;
 
 let taxons = [
-	"taxon_kingdom_name",
-	"taxon_phylum_name",
-	"taxon_class_name",
-	"taxon_order_name",
-	"taxon_family_name",
-	"taxon_genus_name",
-	"taxon_species_name"
+	"kingdom",
+	"phylum",
+	"class",
+	"order",
+	"family",
+	"genus",
+	"species"
 ]
 
 let json = "";
 
 let obsMap = [];
 
-var map;
+var iNatMap;
+
 
 class Observ{
 	constructor(inJson){
 		this.lat = inJson.geojson.coordinates[1];
 		this.long = inJson.geojson.coordinates[0];
 		print(inJson);
-		this.marker = L.circleMarker([this.lat, this.long]).addTo(map);
+		this.marker = L.circleMarker([this.lat, this.long]).addTo(iNatMap);
+
 		let popuphtml = "";
-		if(inJson.photos.length > 0){
+		if(inJson.photos != null && inJson.photos.length > 0){
 			popuphtml += "<img src=\"" + inJson.photos[0].url + "\" alt=\"img\"><br>";
 		}
-		let common = inJson.taxon.prefered_common_name;
-		if(common != "" && common != undefined){
-			print(common);
-			popuphtml += common + "<br>";
-		}
-		let name = inJson.taxon.name;
-		if(name != "" && name != "undefined"){
-			popuphtml += "<i>" + name + "</i><br>";
+		if(inJson.taxon != null){
+			let common = inJson.taxon.prefered_common_name;
+			if(common != "" && common != undefined){
+				print(common);
+				popuphtml += common + "<br>";
+			}
+			let name = inJson.taxon.name;
+			if(name != "" && name != "undefined"){
+				popuphtml += "<i>" + name + "</i><br>";
+			}
 		}
 		this.marker.bindPopup(popuphtml);
 	}
@@ -67,10 +71,10 @@ function preload(){
 			
 			console.log(json.results.length);
 			if(page*200 < totalResults){
-				//loadData(page+1);
-				if(stage == LOADINGINAT){
-					loadMap();
-				}
+				loadData(page+1);
+				//if(stage == LOADINGINAT){
+				//	loadMap();
+				//}
 			} else {
 				if(stage == LOADINGINAT){
 					loadMap();
@@ -86,7 +90,7 @@ function preload(){
 
 function loadMap(){
 
-	 map = L.map('map').setView([json.results[0].geojson.coordinates[1], json.results[0].geojson.coordinates[0]], 13);
+	 iNatMap = L.map('map').setView([json.results[0].geojson.coordinates[1], json.results[0].geojson.coordinates[0]], 13);
 			L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
 			    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
 			    maxZoom: 18,
@@ -94,7 +98,7 @@ function loadMap(){
 			    tileSize: 512,
 			    zoomOffset: -1,
 			    accessToken: 'pk.eyJ1Ijoidmx1Y2VuYSIsImEiOiJjbDFlMGNqdXowbXY3M2NwNmRnb2czcmJpIn0.ZiCM-MFgwpurOrQxxBaZug'
-			}).addTo(map);
+			}).addTo(iNatMap);
 	stage = LOADINGTREE;
 }
 
@@ -110,16 +114,32 @@ function setup(){
 function loadTree(){
 	let level;
 	let name;
+	let taxon;
 	for(let i = 0; i < json.results.length; i++){
 		obsMap[i] = new Observ(json.results[i]);
 	}
 	print(obsMap);
-	/*
+	
+	let anci = 0;
 	for(let row of json.results){
 		print(row);
 		level = tree;
+		anci = 0;
+		if(row.identifications[row.identifications.length-1] == null){
+			continue;
+		}
+		taxon = row.identifications[row.identifications.length-1].taxon;
 		for(let i = 0; i < taxons.length; i++){
-			name = row.scope[taxons[i]];
+			while(anci < taxon.ancestors.length && taxon.ancestors[anci].rank != taxons[i]){
+				anci++;
+			}
+
+			if(anci >= taxon.ancestors.length){
+				name = undefined;
+			} else {
+				name = taxon.ancestors[anci].name;
+			}
+			
 			if(counts.get(name) == undefined){
 				counts.set(name,1);
 			} else {
@@ -148,7 +168,7 @@ function loadTree(){
 			}
 		}
 	}
-	*/
+	
 
 	//print(tree);
 	stage = MAIN;
@@ -167,7 +187,7 @@ let rangeStart = 0;
 let rangeSize = 255;
 
 function draw(){
-	background(100);
+	background(0);
 	fill(255);
 	textSize(20);
 	if (stage == LOADINGINAT){
