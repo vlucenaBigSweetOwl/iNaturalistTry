@@ -55,6 +55,106 @@ class Observ{
 	}
 }
 
+class Bubble{
+
+	constructor(x, y, word){
+		this.x = x;
+		this.y = y;
+		this.word = word.replace(' ','\n');
+		this.over = false;
+		this.stateTick = 0;
+		this.statePos = 0;
+		this.stateVel = 0;
+		this.r = 50;
+		this.textBig = 30;
+		this.hue = 0;
+		this.back = false;
+		textSize(this.textBig);
+		let words = this.word.split('\n');
+		let big = 0;
+		for(let w of words){
+			big = max(textWidth(w),big);
+		}
+		while(big > this.r*2 - GIVE){
+			this.textBig--;
+			textSize(this.textBig);
+			big = 0;
+			for(let w of words){
+				big = max(textWidth(w),big);
+			}
+		}
+	}
+
+	mouseOverCheck(){
+		this.over = dist(mouseX,mouseY,this.x,this.y) < this.r;
+		if(this.over){
+			this.stateTick=100;
+		} else {
+			this.stateTick=0;
+		}
+		this.stateTick = constrain(this.stateTick,0,100);
+	}
+
+	mousePressedCheck(){
+		if(this.over){
+			if(this.back){
+				subgroup.pop();
+				if(subgroup.length > 0){
+					transBubble = new Bubble(this.x,this.y,subgroup[subgroup.length-1]);
+				} else {
+					transBubble =  new Bubble(this.x,this.y,"Everything");
+				}
+			} else {
+				transBubble = this;
+				subgroup.push(this.word);
+			}
+			bubbles = [];
+			transState = 100;
+		}
+	}
+
+	display(){
+		print(this.hue);
+		this.display(this.hue);
+	}
+
+	display(hue){
+		if(hue == -1){
+			hue = this.hue;
+		}
+		this.hue = hue;
+		//let stateTarget = sin(map(this.stateTick,0,100,0,PI*.5))*100;
+		let stateTarget = this.stateTick;
+		this.stateVel += (stateTarget - this.statePos)*.05;
+		this.stateVel -= this.stateVel * 0.2;
+		this.statePos += this.stateVel;
+		//this.statePos = constrain(this.statePos,0,100);
+		let scale = map(this.statePos,0,100,1,1.5);
+
+		stroke(hue,155,100);
+
+		line(this.x,this.y,width*.5,height*(5.0/6));
+		stroke(hue,155,255);
+
+		fill(0);
+		if(this.over){
+			fill(0,0,100);
+		}
+		strokeWeight(3);
+		ellipse(this.x,this.y,this.r*2*scale,this.r*2*scale);
+		fill(hue,100,255);
+		if(this.over){
+			fill(hue,50,255);
+		}
+		noStroke();
+		textSize(this.textBig*scale*0.9);
+		let y = map(this.statePos,0,100,this.y,this.y-this.r*.5);
+		text(this.word,this.x,y);
+	}
+
+
+}
+
 function preload(){
 	//table = loadTable("test2.csv","csv","header");
 
@@ -109,6 +209,7 @@ function setup(){
 
 	textAlign(CENTER,CENTER);
 	colorMode(HSB,255);
+	transBubble = new Bubble(width*.5,height*(5.0/6),"Everything");
 }
 
 function loadTree(){
@@ -175,16 +276,53 @@ function loadTree(){
 }
 
 let subgroup = [];
-let circSize = 100;
-let transState = -1;
-let savei = -1;
-let saveName = -1;
-let saveText = 20;
-let saveRot = 0;
 
 let rangeFlag = 0;
 let rangeStart = 0;
 let rangeSize = 255;
+
+let GIVE = 8;
+
+let rotPos;
+let rotVel = 0;
+let rotDrag = 0.05;
+
+let transState = -1;
+let transBubble;
+let bubbles = [];
+
+function calcbubbles(level){
+	let i = 0;
+	let rot = 0;
+	if(level.size > 1){
+		rot = PI*2/(level.size-1);
+		rot = min(PI*.13, rot);
+	}
+	for(let m of level){
+		let x = width/2 + sin(rot*i+rotPos)*height*(4.0/6);
+		let y = height*(5.0/6) + cos(rot*i+rotPos)*height*(4.0/6);
+		bubbles[i] = new Bubble(x,y,m[0]);
+		i++;
+	}
+	rotPos = PI - rot*i*.5;
+}
+
+function updatebubbles(level){
+	let i = 0;
+	let rot = 0;
+	if(level.size > 1){
+		rot = PI*2/(level.size-1);
+		rot = min(PI*.13, rot);
+	}
+	for(let m of level){
+		let x = width/2 + sin(rot*i+rotPos)*height*(4.0/6);
+		let y = height*(5.0/6) + cos(rot*i+rotPos)*height*(4.0/6);
+		bubbles[i].x = x;
+		bubbles[i].y = y;
+		i++;
+	}
+	return rot;
+}
 
 function draw(){
 	background(0);
@@ -201,6 +339,18 @@ function draw(){
 		loadTree();
 		stage = MAIN;
 	} else if(stage == MAIN){
+		background(0);
+		let camx = 0;
+		let camy = 0;
+		if(transState > 0){
+			let offx = width*.5 - transBubble.x;
+			let offy = height*(5.0/6)- transBubble.y;
+			let transMap = (cos(map(transState,100,0,0,PI))+1)*50;
+			camx = map(transMap,100,0,-offx,0);
+			camy = map(transMap,100,0,-offy,0);
+			translate(camx,camy);
+		}
+
 		let level = tree;
 		for(let i = 0; i < subgroup.length; i++){
 			level = level.get(subgroup[i]);
@@ -210,77 +360,77 @@ function draw(){
 			rangeStart = rangeStart + rangeFlag * rangeSize;
 			rangeFlag = -1;
 		}
-		let i = 0;
-		let rot = PI*2.0/level.size;
-		for(let m of level){
-			let x = width/2 + sin(rot*i+saveRot)*200;
-			let y = height/2 + cos(rot*i+saveRot)*200;
-			noFill();
-			stroke(rangeStart+rangeSize*i,255,255);
-			strokeWeight(1);
-			ellipse(x,y,circSize,circSize);
-			fill(rangeStart+rangeSize*i,255,255)
-			noStroke();
-			let textBig = 20;
-			textSize(textBig);
-			textMap = m[0];
-			textMap.replace(' ','\n');
-			while(textWidth(textMap) > circSize){
-				textBig--;
-				textSize(textBig);
-			}
+		rotPos += rotVel;
+		rotVel -= rotVel*rotDrag;
+		if(bubbles.length == 0){
+			let arc = calcbubbles(level);
 
-			text(textMap,x,y);
+		} else {
+			updatebubbles(level);
+		}
+		
+		let i = 0;
+		for(let b of bubbles){
+			b.mouseOverCheck();
+			b.display(255*(1.0*i/bubbles.length));
 			i++;
 		}
-		if(transState > 0){
-			let transMap = 100 - ((cos(map(transState,0,100,0,PI))+1)*50);
-			fill(0,transMap*3);
-			rect(0,0,width,height);
-			let x = width/2 + sin(saveRot)*200;
-			let y = height/2 + cos(saveRot)*200;
-			x = map(transMap,100,0,x,width/2);
-			y = map(transMap,100,0,y,height/2);
-			let sizeMult = map(transMap,100,0,1,width*1.0/circSize);
-			noFill();
-			stroke(255, transMap*2);
-			strokeWeight(sizeMult);
-			ellipse(x,y,circSize*sizeMult,circSize*sizeMult);
-			fill(255,  transMap*2)
-			noStroke();
-			textSize(saveText*sizeMult);
-			text(saveName,x,y);
+
+		if(pressed){
+			let redo = false;
+			let difx = pmouseX - mouseX;
+			let dify = pmouseY - mouseY; 
+			let normd = dist(mouseX,mouseY,width*.5,height*(5.0/6));
+			let normx = (mouseX - width*.5)/normd;
+			let normy = (mouseY - height*(5.0/6))/normd;
+			let tanx = -normy;
+			let tany = normx;
+			rotVel = tan((difx*tanx + dify*tany)/normd);
 		}
+
+		if(transState > 0){
+			resetMatrix();
+
+
+			fill(0,transState*3);
+			rect(0,0,width,height);
+
+			let offx = width*.5 - transBubble.x;
+			let offy = height*(5.0/6)- transBubble.y;
+			let transMap = (cos(map(transState,100,0,0,PI))+1)*50;
+			camx = map(transMap,100,0,0,offx);
+			camy = map(transMap,100,0,0,offy);
+			translate(camx,camy);
+
+
+			transBubble.over = false;
+			transBubble.stateTick=0;
+		} else {
+			transBubble.x = width*.5;
+			transBubble.y = height*(5.0/6);
+			transBubble.back = true;
+		}
+
+		transBubble.mouseOverCheck();
+		transBubble.display(-1);
 
 		transState-=2;
 	}
 }
 
+let overSketch = false;
+let pressed = false;
+
 function mousePressed(){
-	let level = tree;
-	for(let i = 0; i < subgroup.length; i++){
-		level = level.get(subgroup[i]);
+	overSketch = true;
+	pressed = true;
+	transBubble.mousePressedCheck();
+	for(let b of bubbles){
+		b.mousePressedCheck();
 	}
-	let i = 0;
-	let rot = PI*2.0/level.size;
-	for(let m of level){
-		let x = width/2 + sin(rot*i+saveRot)*200;
-		let y = height/2 + cos(rot*i+saveRot)*200;
-		if(dist(mouseX,mouseY,x,y) < circSize){
-			subgroup.push(m[0]);
-			saveRot += rot*i;
-			saveName = m[0];
-			transState = 100;
-			let textBig = 20;
-			textSize(textBig);
-			while(textWidth(saveName) > circSize){
-				textBig--;
-				textSize(textBig);
-			}
-			saveText = textBig;
-			rangeFlag = i;
-		}
-		i++;
-	}
+}
+
+function mouseReleased(){
+	pressed = false;
 }
 
